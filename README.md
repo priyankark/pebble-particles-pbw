@@ -2,8 +2,6 @@
 
 A Pebble watchface inspired by the Netflix series "Squid Game", featuring an animated guard mask with the iconic triangle symbol. This is just meant as a sample for my own reference. The code was mostly AI generated.
 
-![Squid Game Guard](screenshots/guard.png)
-
 ## Features
 
 - Animated guard mask with breathing effect
