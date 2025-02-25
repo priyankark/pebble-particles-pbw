@@ -16,25 +16,29 @@ static const GPathInfo TRIANGLE_PATH_INFO = {
   .points = (GPoint[]) {{0, -12}, {-10, 4}, {10, 4}}
 };
 
-// Improved hoodie path points with more natural curves
+// Refined hoodie path points with better fit and details
 static const GPathInfo HOODIE_PATH_INFO = {
-  .num_points = 15,
+  .num_points = 19,
   .points = (GPoint[]) {
-    {-30, 5},      // Left shoulder start
-    {-35, -5},     // Left shoulder curve
-    {-33, -20},    // Left side upper
-    {-28, -30},    // Left hood start
-    {-20, -38},    // Left hood curve
-    {-10, -42},    // Left hood top
-    {0, -43},      // Hood center
-    {10, -42},     // Right hood top
-    {20, -38},     // Right hood curve
-    {28, -30},     // Right hood start
-    {33, -20},     // Right side upper
-    {35, -5},      // Right shoulder curve
-    {30, 5},       // Right shoulder start
-    {20, 30},      // Right bottom
-    {-20, 30}      // Left bottom
+    {-25, 5},      // Left collar start
+    {-32, 3},      // Left shoulder point
+    {-35, -2},     // Left shoulder sharp
+    {-34, -15},    // Left side upper
+    {-32, -25},    // Left hood base
+    {-25, -35},    // Left hood curve start
+    {-15, -42},    // Left hood curve
+    {-8, -44},     // Left hood top
+    {0, -45},      // Hood peak
+    {8, -44},      // Right hood top
+    {15, -42},     // Right hood curve
+    {25, -35},     // Right hood curve start
+    {32, -25},     // Right hood base
+    {34, -15},     // Right side upper
+    {35, -2},      // Right shoulder sharp
+    {32, 3},       // Right shoulder point
+    {25, 5},       // Right collar start
+    {18, 28},      // Right bottom
+    {-18, 28}      // Left bottom
   }
 };
 
@@ -100,24 +104,41 @@ static void update_time(Layer *layer, GContext *ctx) {
   graphics_context_set_stroke_color(ctx, s_squid_pink);
   graphics_context_set_fill_color(ctx, s_squid_pink);
   
+  // Adjust layout based on platform
+  #if defined(PBL_ROUND)
+    // Round display (chalk) - adjust for circular screen
+    int guard_y = height/3 - 15;  // Move up more on round display
+    int time_y = height/2 + 5;    // Adjust time position
+    int player_y = height*3/4 + 5;  // Adjust player number
+    
+    // Adjust bounds for round screen
+    GRect adjusted_bounds = grect_inset(bounds, GEdgeInsets(20));
+    width = adjusted_bounds.size.w;
+  #else
+    // Rectangle display (aplite, basalt, diorite, emery)
+    int guard_y = height/3 - 10;
+    int time_y = height/2;
+    int player_y = height*4/5;
+  #endif
+
   // Draw guard at top center
-  GPoint guard_center = GPoint(width/2, height/3 - 10);  // Moved up slightly
+  GPoint guard_center = GPoint(width/2, guard_y);
   draw_guard(ctx, guard_center, s_anim_counter);
 
-  // Draw time below guard with more space
+  // Draw time below guard with platform-specific spacing
   GFont time_font = fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS);
-  GRect time_bounds = GRect(0, height/2, width, 50);
+  GRect time_bounds = GRect(0, time_y, width, 50);
   
   graphics_context_set_text_color(ctx, s_squid_pink);
   graphics_draw_text(ctx, s_time_buffer, time_font, time_bounds,
                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
 
-  // Draw player number at bottom with more spacing
+  // Draw player number with platform-specific spacing
   static char s_player_buffer[32];
   snprintf(s_player_buffer, sizeof(s_player_buffer), "PLAYER 456");
   
   GFont player_font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
-  GRect player_bounds = GRect(0, height*4/5, width, 30);  // Moved down
+  GRect player_bounds = GRect(0, player_y, width, 30);
   
   graphics_draw_text(ctx, s_player_buffer, player_font, player_bounds,
                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
