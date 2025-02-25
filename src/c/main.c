@@ -16,21 +16,25 @@ static const GPathInfo TRIANGLE_PATH_INFO = {
   .points = (GPoint[]) {{0, -12}, {-10, 4}, {10, 4}}
 };
 
-// Improved hoodie path points with better side curves
+// Improved hoodie path points with more natural curves
 static const GPathInfo HOODIE_PATH_INFO = {
-  .num_points = 11,
+  .num_points = 15,
   .points = (GPoint[]) {
-    {-35, 0},     // Left shoulder
-    {-32, -15},   // Left curve 1
-    {-28, -28},   // Left curve 2
-    {-20, -38},   // Left hood curve
-    {0, -45},     // Hood top
-    {20, -38},    // Right hood curve
-    {28, -28},    // Right curve 2
-    {32, -15},    // Right curve 1
-    {35, 0},      // Right shoulder
-    {25, 25},     // Right bottom
-    {-25, 25}     // Left bottom
+    {-30, 5},      // Left shoulder start
+    {-35, -5},     // Left shoulder curve
+    {-33, -20},    // Left side upper
+    {-28, -30},    // Left hood start
+    {-20, -38},    // Left hood curve
+    {-10, -42},    // Left hood top
+    {0, -43},      // Hood center
+    {10, -42},     // Right hood top
+    {20, -38},     // Right hood curve
+    {28, -30},     // Right hood start
+    {33, -20},     // Right side upper
+    {35, -5},      // Right shoulder curve
+    {30, 5},       // Right shoulder start
+    {20, 30},      // Right bottom
+    {-20, 30}      // Left bottom
   }
 };
 

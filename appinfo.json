@@ -9,7 +9,15 @@
   "watchapp": {
     "watchface": true
   },
+  "capabilities": [
+    "configurable"
+  ],
   "resources": {
     "media": []
+  },
+  "dependencies": {},
+  "messageKeys": {
+    "backgroundColor": 0,
+    "textColor": 1
   }
 }
