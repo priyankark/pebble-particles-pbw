@@ -1,194 +1,231 @@
 #include <pebble.h>
 
+// Window and layer handles
 static Window *s_main_window;
 static Layer *s_canvas_layer;
-static GPath *s_triangle_path = NULL;
-static GPath *s_hoodie_path = NULL;
-static GColor s_squid_pink;
 
 // Animation state
-static int s_anim_counter = 0;
-static bool s_animating = false;
+static int s_animation_counter = 0;
 
-// Triangle path points for guard mask - smaller and higher
-static const GPathInfo TRIANGLE_PATH_INFO = {
-  .num_points = 3,
-  .points = (GPoint[]) {{0, -12}, {-10, 4}, {10, 4}}
-};
+// Electron trail effect
+#define MAX_TRAIL_LENGTH 6  // Longer trails for better visual effect
+#define NUM_ELECTRONS 5
+static GPoint s_electron_trails[NUM_ELECTRONS][MAX_TRAIL_LENGTH];
 
-// Refined hoodie path points with better fit and details
-static const GPathInfo HOODIE_PATH_INFO = {
-  .num_points = 19,
-  .points = (GPoint[]) {
-    {-25, 5},      // Left collar start
-    {-32, 3},      // Left shoulder point
-    {-35, -2},     // Left shoulder sharp
-    {-34, -15},    // Left side upper
-    {-32, -25},    // Left hood base
-    {-25, -35},    // Left hood curve start
-    {-15, -42},    // Left hood curve
-    {-8, -44},     // Left hood top
-    {0, -45},      // Hood peak
-    {8, -44},      // Right hood top
-    {15, -42},     // Right hood curve
-    {25, -35},     // Right hood curve start
-    {32, -25},     // Right hood base
-    {34, -15},     // Right side upper
-    {35, -2},      // Right shoulder sharp
-    {32, 3},       // Right shoulder point
-    {25, 5},       // Right collar start
-    {18, 28},      // Right bottom
-    {-18, 28}      // Left bottom
-  }
-};
+// Model parameters
+static const int NUCLEUS_RADIUS = 10;
+static const int ORBIT_RADIUS = 45;  // Using circular orbits as requested
 
-static void draw_guard(GContext *ctx, GPoint center, int anim_state) {
-  // Draw filled hoodie
-  if (!s_hoodie_path) {
-    s_hoodie_path = gpath_create(&HOODIE_PATH_INFO);
-  }
-  graphics_context_set_stroke_width(ctx, 3);
-  gpath_move_to(s_hoodie_path, center);
-  graphics_context_set_fill_color(ctx, s_squid_pink);
-  gpath_draw_filled(ctx, s_hoodie_path);
-  graphics_context_set_stroke_color(ctx, s_squid_pink);
-  gpath_draw_outline(ctx, s_hoodie_path);
-  
-  // Smoother animation using integer math
-  int pulse = anim_state % 30;  // 0-29
-  int radius = 35;  // Base radius
-  
-  // Gentle pulse effect using triangle wave
-  if (pulse < 15) {
-    radius += pulse / 7;  // Slowly increase
-  } else {
-    radius += (29 - pulse) / 7;  // Slowly decrease
-  }
-  graphics_context_set_stroke_width(ctx, 3);
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_circle(ctx, center, radius);
-  graphics_context_set_stroke_color(ctx, s_squid_pink);
-  graphics_draw_circle(ctx, center, radius);
-  
-  // Draw triangle inside with smoother animation
-  if (!s_triangle_path) {
-    s_triangle_path = gpath_create(&TRIANGLE_PATH_INFO);
-  }
-  // Calculate triangle position with subtle movement
-  int offset = pulse < 15 ? pulse / 10 : (29 - pulse) / 10;  // 0-1 movement
-  GPoint triangle_center = GPoint(
-    center.x,
-    center.y - 8 + offset  // Higher position, tiny movement
-  );
-  gpath_move_to(s_triangle_path, triangle_center);
-  graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_context_set_stroke_width(ctx, 2);
-  gpath_draw_outline(ctx, s_triangle_path);
-}
-
-static void update_time(Layer *layer, GContext *ctx) {
-  // Get current time
-  time_t temp = time(NULL);
-  struct tm *tick_time = localtime(&temp);
-
-  // Create time string
-  static char s_time_buffer[8];
-  strftime(s_time_buffer, sizeof(s_time_buffer), "%H:%M", tick_time);
-
-  // Get bounds
+// Update procedure for the display
+static void update_proc(Layer *layer, GContext *ctx) {
+  // Get screen dimensions
   GRect bounds = layer_get_bounds(layer);
   int width = bounds.size.w;
   int height = bounds.size.h;
-
-  // Set up drawing context
-  graphics_context_set_stroke_color(ctx, s_squid_pink);
-  graphics_context_set_fill_color(ctx, s_squid_pink);
   
-  // Adjust layout based on platform
-  #if defined(PBL_ROUND)
-    // Round display (chalk) - adjust for circular screen
-    int guard_y = height/3 - 15;  // Move up more on round display
-    int time_y = height/2 + 5;    // Adjust time position
-    int player_y = height*3/4 + 5;  // Adjust player number
-    
-    // Adjust bounds for round screen
-    GRect adjusted_bounds = grect_inset(bounds, GEdgeInsets(20));
-    width = adjusted_bounds.size.w;
+  // Center point for the atom
+  GPoint center = GPoint(width / 2, height / 2 - 20);
+  
+  // Draw nucleus (red on color, white on B&W)
+  #ifdef PBL_COLOR
+    graphics_context_set_fill_color(ctx, GColorRed);
   #else
-    // Rectangle display (aplite, basalt, diorite, emery)
-    int guard_y = height/3 - 10;
-    int time_y = height/2;
-    int player_y = height*4/5;
+    graphics_context_set_fill_color(ctx, GColorWhite);
   #endif
-
-  // Draw guard at top center
-  GPoint guard_center = GPoint(width/2, guard_y);
-  draw_guard(ctx, guard_center, s_anim_counter);
-
-  // Draw time below guard with platform-specific spacing
-  GFont time_font = fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS);
-  GRect time_bounds = GRect(0, time_y, width, 50);
+  graphics_fill_circle(ctx, center, NUCLEUS_RADIUS);
   
-  graphics_context_set_text_color(ctx, s_squid_pink);
-  graphics_draw_text(ctx, s_time_buffer, time_font, time_bounds,
+  // Draw the star shape as the electron path
+  graphics_context_set_stroke_color(ctx, GColorDarkGray);
+  graphics_context_set_stroke_width(ctx, 1);
+  
+  // Draw star shape with curved paths between points
+  for (int i = 0; i < NUM_ELECTRONS; i++) {
+    int next_idx = (i + 2) % NUM_ELECTRONS;  // Connect to point 2 ahead for star shape
+    
+    // Calculate the star points
+    int32_t angle1 = (i * TRIG_MAX_ANGLE) / NUM_ELECTRONS;
+    int32_t angle2 = (next_idx * TRIG_MAX_ANGLE) / NUM_ELECTRONS;
+    
+    // Star points
+    int x1 = center.x + (sin_lookup(angle1) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    int y1 = center.y - (cos_lookup(angle1) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    int x2 = center.x + (sin_lookup(angle2) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    int y2 = center.y - (cos_lookup(angle2) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    
+    // Draw the line connecting the star points
+    graphics_draw_line(ctx, GPoint(x1, y1), GPoint(x2, y2));
+  }
+  
+  // Draw electrons with enhanced trail effect
+  for (int i = 0; i < NUM_ELECTRONS; i++) {
+    // Calculate current position along the star path
+    int line_segment = (s_animation_counter / 15) % NUM_ELECTRONS;
+    int progress = (s_animation_counter % 15) * 100 / 15;  // 0-100% progress along current line
+    
+    // The starting point is determined by the line segment we're on
+    int start_point = (line_segment + i) % NUM_ELECTRONS;
+    int end_point = (start_point + 2) % NUM_ELECTRONS;  // Star pattern connects to point 2 ahead
+    
+    // Calculate angles for start and end points
+    int32_t start_angle = (start_point * TRIG_MAX_ANGLE) / NUM_ELECTRONS;
+    int32_t end_angle = (end_point * TRIG_MAX_ANGLE) / NUM_ELECTRONS;
+    
+    // Calculate start and end coordinates
+    int start_x = center.x + (sin_lookup(start_angle) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    int start_y = center.y - (cos_lookup(start_angle) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    int end_x = center.x + (sin_lookup(end_angle) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    int end_y = center.y - (cos_lookup(end_angle) * ORBIT_RADIUS / TRIG_MAX_RATIO);
+    
+    // Interpolate between start and end based on progress
+    int current_x = start_x + ((end_x - start_x) * progress) / 100;
+    int current_y = start_y + ((end_y - start_y) * progress) / 100;
+    
+    // Store current position for trail effect
+    // Shift existing trail positions
+    for (int t = MAX_TRAIL_LENGTH - 1; t > 0; t--) {
+      s_electron_trails[i][t] = s_electron_trails[i][t-1];
+    }
+    s_electron_trails[i][0] = GPoint(current_x, current_y);
+    
+    // Draw the trail effect (from oldest to newest for proper layering)
+    for (int t = MAX_TRAIL_LENGTH - 1; t >= 0; t--) {
+      if (t == 0 || (s_electron_trails[i][t].x != 0 && s_electron_trails[i][t].y != 0)) {
+        #ifdef PBL_COLOR
+          // Different colors for each electron in color mode
+          switch (i % 5) {
+            case 0: graphics_context_set_fill_color(ctx, GColorBlue); break;
+            case 1: graphics_context_set_fill_color(ctx, GColorGreen); break;
+            case 2: graphics_context_set_fill_color(ctx, GColorMagenta); break;
+            case 3: graphics_context_set_fill_color(ctx, GColorYellow); break;
+            case 4: graphics_context_set_fill_color(ctx, GColorCyan); break;
+          }
+        #else
+          graphics_context_set_fill_color(ctx, GColorWhite);
+        #endif
+        
+        // Electron size varies with trail position - larger head, gradually smaller tail
+        int radius = 5 - t;
+        if (radius < 1) radius = 1;
+        
+        graphics_fill_circle(ctx, s_electron_trails[i][t], radius);
+      }
+    }
+  }
+  
+  // Draw time
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  
+  static char time_text[8];
+  strftime(time_text, sizeof(time_text), clock_is_24h_style() ? "%H:%M" : "%I:%M", t);
+  
+  graphics_context_set_text_color(ctx, GColorWhite);
+  GFont time_font = fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD);
+  GRect time_bounds = GRect(0, height / 2 + 15, width, 50);
+  graphics_draw_text(ctx, time_text, time_font, time_bounds, 
                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-
-  // Draw player number with platform-specific spacing
-  static char s_player_buffer[32];
-  snprintf(s_player_buffer, sizeof(s_player_buffer), "PLAYER 456");
   
-  GFont player_font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
-  GRect player_bounds = GRect(0, player_y, width, 30);
+  // Draw date
+  static char date_text[16];
+  strftime(date_text, sizeof(date_text), "%b %d", t);
   
-  graphics_draw_text(ctx, s_player_buffer, player_font, player_bounds,
+  GFont date_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+  GRect date_bounds = GRect(0, height / 2 + 55, width, 28);
+  graphics_draw_text(ctx, date_text, date_font, date_bounds,
                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+                    
+  // Draw battery level in top right corner
+  BatteryChargeState battery = battery_state_service_peek();
+  
+  // Battery icon dimensions
+  int battery_width = 20;
+  int battery_height = 10;
+  int battery_x = width - battery_width - 10;  // 10px from right edge
+  int battery_y = 10;  // 10px from top
+  
+  // Battery outline
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  GRect battery_outline = GRect(battery_x - 2, battery_y, battery_width + 4, battery_height);
+  graphics_draw_rect(ctx, battery_outline);
+  
+  // Battery terminal
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_rect(ctx, GRect(battery_x + battery_width + 2, battery_y + 2, 2, 6), 0, GCornerNone);
+  
+  // Battery level
+  int level_width = (battery_width * battery.charge_percent) / 100;
+  #ifdef PBL_COLOR
+    if (battery.charge_percent > 50) {
+      graphics_context_set_fill_color(ctx, GColorGreen);
+    } else if (battery.charge_percent > 20) {
+      graphics_context_set_fill_color(ctx, GColorYellow);
+    } else {
+      graphics_context_set_fill_color(ctx, GColorRed);
+    }
+  #else
+    graphics_context_set_fill_color(ctx, GColorWhite);
+  #endif
+  graphics_fill_rect(ctx, GRect(battery_x, battery_y + 2, level_width, 6), 0, GCornerNone);
+  
+  // Draw charging indicator if applicable
+  if (battery.is_charging) {
+    static char charging_text[] = "+";
+    graphics_draw_text(ctx, charging_text, fonts_get_system_font(FONT_KEY_GOTHIC_14), 
+                      GRect(battery_x - 12, battery_y - 3, 15, 15),
+                      GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  }
+  
+  // Draw battery percentage next to the icon
+  static char battery_text[6];
+  snprintf(battery_text, sizeof(battery_text), "%d%%", battery.charge_percent);
+  
+  graphics_context_set_text_color(ctx, GColorWhite);
+  GFont battery_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+  GRect battery_text_bounds = GRect(battery_x - 30, battery_y - 3, 25, 16);
+  graphics_draw_text(ctx, battery_text, battery_font, battery_text_bounds,
+                    GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
 }
 
-static void timer_callback(void *data) {
-  s_anim_counter = (s_anim_counter + 1) % 60;
-  layer_mark_dirty(s_canvas_layer);
-  
-  // Keep animation running
-  app_timer_register(50, timer_callback, NULL);  // Slower animation for smoother feel
-}
-
+// Handler for time changes
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  // Update animation state at a good speed for fluid motion
+  s_animation_counter = (s_animation_counter + 2) % (15 * NUM_ELECTRONS);
+  
+  // Force the screen to redraw
   layer_mark_dirty(s_canvas_layer);
 }
 
+// Battery state change handler
+static void battery_callback(BatteryChargeState state) {
+  layer_mark_dirty(s_canvas_layer);
+}
+
+// Window load event
 static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
-
+  
+  // Create the main display layer
   s_canvas_layer = layer_create(bounds);
-  layer_set_update_proc(s_canvas_layer, update_time);
+  layer_set_update_proc(s_canvas_layer, update_proc);
   layer_add_child(window_layer, s_canvas_layer);
   
-  // Start animation
-  s_animating = true;
-  app_timer_register(33, timer_callback, NULL);
+  // Initialize electron trail arrays
+  for (int i = 0; i < NUM_ELECTRONS; i++) {
+    for (int t = 0; t < MAX_TRAIL_LENGTH; t++) {
+      s_electron_trails[i][t] = GPoint(0, 0);
+    }
+  }
 }
 
+// Window unload event
 static void window_unload(Window *window) {
   layer_destroy(s_canvas_layer);
-  if (s_triangle_path) {
-    gpath_destroy(s_triangle_path);
-  }
-  if (s_hoodie_path) {
-    gpath_destroy(s_hoodie_path);
-  }
 }
 
+// Initialize the watchface
 static void init() {
   s_main_window = window_create();
-  
-  // Set Squid Game pink color
-  #if defined(PBL_COLOR)
-    s_squid_pink = GColorFromRGB(255, 101, 193);  // FF65C1
-  #else
-    s_squid_pink = GColorWhite;  // White for B&W screens
-  #endif
-  
   window_set_background_color(s_main_window, GColorBlack);
   
   window_set_window_handlers(s_main_window, (WindowHandlers) {
@@ -196,18 +233,26 @@ static void init() {
     .unload = window_unload
   });
   
-  window_stack_push(s_main_window, true);
+  // Subscribe to the tick timer service for animation
+  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
   
-  // Update time every minute
-  tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  // Subscribe to battery state service for battery updates
+  battery_state_service_subscribe(battery_callback);
+  
+  window_stack_push(s_main_window, true);
 }
 
+// Cleanup when exiting
 static void deinit() {
+  tick_timer_service_unsubscribe();
+  battery_state_service_unsubscribe();
   window_destroy(s_main_window);
 }
 
-int main(void) {
+// Main program
+int main() {
   init();
   app_event_loop();
   deinit();
+  return 0;
 }
