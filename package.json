@@ -1,12 +1,12 @@
 {
-  "name": "atom-watchface",
+  "name": "pebble-particles",
   "author": "Rebble",
   "version": "1.0.0",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "Atom Watchface",
+    "displayName": "Pebble Particles",
     "uuid": "8a3215f4-cf20-4c05-997b-3c9be5f64e7c",
     "sdkVersion": "3",
     "enableMultiJS": false,
