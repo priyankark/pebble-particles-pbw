@@ -1,11 +1,12 @@
-# Squid Game Watchface
+# Pebble Particles
 
-A Pebble watchface inspired by the Netflix series "Squid Game", featuring an animated guard mask with the iconic triangle symbol. This is just meant as a sample for my own reference. The code was mostly AI generated.
+An elegant and mesmerizing watchface that transforms your Pebble into a dynamic particle system where time flows through beautiful animated particles. Watch as smooth, flowing particles dance across your screen, creating an enchanting display while clearly showing the current time.
 
 ## Features
 
-- Animated guard mask with breathing effect
-- Player 456 identifier
+- Dynamic particle animation system
+- Clear time display
+- Battery-efficient animation implementation
 
 ## Project Structure
 
@@ -14,8 +15,6 @@ A Pebble watchface inspired by the Netflix series "Squid Game", featuring an ani
 ├── src/
 │   └── c/
 │       └── main.c         # Main watchface implementation
-├── resources/
-│   └── fonts/            # Font resources
 ├── package.json          # Project metadata and Pebble configuration
 └── wscript              # Build system configuration
 ```
@@ -28,14 +27,14 @@ The project uses the Rebble tool for building and running. To build the project:
 rebble build
 ```
 
-This will generate a `build/squidgames.pbw` file.
+This will generate a `build/pebble-particles.pbw` file.
 
 ## Running in Emulator
 
 To run the watchface in the emulator:
 
 ```bash
-rebble install --emulator basalt build/squidgames.pbw
+rebble install --emulator basalt build/pebble-particles.pbw
 ```
 
 To interact with the emulator:
@@ -54,28 +53,31 @@ This will provide a web interface accessible at a local URL (displayed in the te
 
 ### Main Components
 
-1. **Guard Design**
-   - Animated mask with breathing effect
-   - White triangle symbol
+1. **Particle System**
+   - Smooth particle animation
+   - Configurable particle behavior
+   - Memory-efficient particle management
 
 2. **Time Display**
    - Uses Pebble's time service
-   - Large, centered digits
-   - Player 456 identifier
+   - Clear, legible time presentation
+   - Integrated with particle flow
 
 3. **Animation System**
-   - Smooth breathing effect
-   - 50ms update interval
+   - Fluid particle movement
+   - Optimized update intervals
    - Memory-efficient implementation
    - Battery-friendly design
 
 ### Platform Support
 
-The watchface supports Pebble platforms with specific optimizations:
-- aplite: Original Pebble and Pebble Steel (B&W)
+The watchface supports multiple Pebble platforms:
+- aplite: Original Pebble and Pebble Steel
+- chalk: Pebble Time Round
+- diorite: Pebble 2
 
 ### Memory Usage
-- Efficient resource management
+- Efficient particle management
 - Clean cleanup in window unload
 - Proper timer handling
 - Optimized drawing routines
@@ -83,10 +85,9 @@ The watchface supports Pebble platforms with specific optimizations:
 ## Development Notes
 
 - Built using the Rebble tool (modern replacement for Pebble SDK)
-- Uses platform-specific conditional compilation
-- Implements efficient animation system
-- Supports B&W displays
-
+- Uses platform-specific optimizations
+- Implements efficient particle animation system
+- Supports various Pebble displays
 
 ## License
 
@@ -94,6 +95,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Inspired by Netflix's "Squid Game"
 - Built with Rebble development tools
 - Thanks to the Pebble development community
