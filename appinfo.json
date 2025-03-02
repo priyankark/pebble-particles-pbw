@@ -3,7 +3,7 @@
   "shortName": "Pebble Particles",
   "longName": "Pebble Particles",
   "companyName": "AirCodum",
-  "description": "Experience time in a mesmerizing new way with Pebble Particles! This elegant watchface transforms your Pebble into a dynamic particle system where time flows through beautiful animated particles. Watch as smooth, flowing particles dance across your screen, creating an enchanting display while clearly showing the current time. Features configurable colors and particle behavior. A perfect blend of art and functionality for your wrist.",
+  "description": "Experience time in a mesmerizing new way with Pebble Particles! This elegant watchface transforms your Pebble into a dynamic particle system where time flows through beautiful animated particles. Watch as smooth, flowing particles dance across your screen, creating an enchanting display while clearly showing the current time, date and battery level. A perfect blend of art and functionality for your wrist.",
   "versionLabel": "1.0",
   "sdkVersion": "3",
   "targetPlatforms": ["aplite", "chalk", "diorite"],
